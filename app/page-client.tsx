@@ -1,16 +1,20 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { ArrowRight, Award, CheckCircle, Download, GitBranch, Globe, GraduationCap, Mail, MapPin } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Award, CheckCircle, Download, GitBranch, Globe, GraduationCap, Mail, MapPin, X } from 'lucide-react';
 
 interface Profile {
   name?: string; title?: string; description?: string; email?: string;
   linkedin?: string; github?: string; website?: string; location?: string; available?: boolean;
 }
 interface Experience { id: number; period: string; type: string; title: string; company: string; location: string; badge: string; points: string[]; techs: string[] }
-interface Project { id: number; title: string; category: string; description: string; stack: string[] }
+interface Project {
+  id: number; title: string; category: string; description: string; stack: string[];
+  slug?: string; long_description?: string; repo_url?: string; demo_url?: string; images?: string[];
+}
 interface Skill { id: number; category: string; items: string[] }
 interface Certification { id: number; name: string; issuer: string }
 interface PageData { profile: Profile; experiences: Experience[]; projects: Project[]; skills: Skill[]; certifications: Certification[] }
@@ -117,6 +121,54 @@ function ContactForm({ email }: { email: string }) {
   );
 }
 
+function ProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <motion.div initial={{ opacity: 0, scale: 0.96, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 10 }}
+        onClick={e => e.stopPropagation()}
+        className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-7 shadow-2xl">
+        <div className="mb-1 flex items-start justify-between">
+          <span className="text-xs font-medium text-slate-400">{project.category}</span>
+          <button onClick={onClose} aria-label="Fermer" className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+            <X size={18} />
+          </button>
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">{project.title}</h3>
+        <p className="mt-3 text-sm leading-6 text-slate-500">{project.description}</p>
+        <div className="mt-4 flex flex-wrap gap-2">{(project.stack || []).map(s => <Pill key={s} label={s} />)}</div>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          {project.repo_url && (
+            <a href={project.repo_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700">
+              <GitBranch size={14} /> Voir le repo
+            </a>
+          )}
+          {project.demo_url && (
+            <a href={project.demo_url} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
+              <Globe size={14} /> Voir la démo
+            </a>
+          )}
+          {project.slug && (
+            <Link href={`/projets/${project.slug}`} onClick={onClose}
+              className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-slate-400 transition hover:text-slate-700">
+              Détail complet <ArrowRight size={14} />
+            </Link>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 const expertiseCards = [
   { num:'01', icon:'📊', title:'Monitoring & Observabilité', color:'border-orange-200 bg-orange-50', ibg:'bg-orange-100', desc:'Prometheus (PromQL, alertmanager, SLI/SLO/SLA), dashboards Grafana, centralisation des logs Loki.', techs:['Prometheus','Grafana','Loki','Alertmanager'] },
   { num:'02', icon:'🖥️', title:'Virtualisation & Cloud', color:'border-blue-200 bg-blue-50', ibg:'bg-blue-100', desc:'Proxmox : clusters HA, VMs KVM, LXC, Ceph. AWS haute disponibilité. Certifié SA.', techs:['Proxmox','AWS','Azure','EC2'] },
@@ -136,6 +188,7 @@ const allTechs = ['AWS','Docker','Kubernetes','Proxmox','Prometheus','Grafana','
 export default function PageClient({ data }: { data: PageData }) {
   const { profile, experiences, projects, skills, certifications } = data;
   const typingWords = useMemo(() => [profile.title || 'Ingénieur DevOps & Cloud AWS', 'Expert Prometheus · Grafana · Loki', 'Consultant ERP & Architecture'], [profile.title]);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -334,7 +387,9 @@ export default function PageClient({ data }: { data: PageData }) {
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {projects.map((p,i) => (
               <motion.div key={p.id} initial={{opacity:0,y:14}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.06,duration:0.45}}
-                className={`group rounded-2xl border ${projColors[i]||projColors[0]} p-6 hover:shadow-md transition`}>
+                role="button" tabIndex={0} onClick={() => setActiveProject(p)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setActiveProject(p); }}
+                className={`group cursor-pointer rounded-2xl border ${projColors[i]||projColors[0]} p-6 hover:shadow-md transition`}>
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-2xl">{projIcons[i]||'📁'}</span>
                   <span className="text-xs font-medium text-slate-400">{p.category}</span>
@@ -342,9 +397,9 @@ export default function PageClient({ data }: { data: PageData }) {
                 <h3 className="text-base font-bold text-slate-900">{p.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-slate-500">{p.description}</p>
                 <div className="mt-4 flex flex-wrap gap-2">{(p.stack||[]).map(s => <Pill key={s} label={s}/>)}</div>
-                <a href="#contact" className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition group-hover:text-slate-700">
-                  En savoir plus <ArrowRight size={12}/>
-                </a>
+                <span className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-slate-400 transition group-hover:text-slate-700">
+                  Voir la démo <ArrowRight size={12}/>
+                </span>
               </motion.div>
             ))}
           </div>
@@ -427,6 +482,10 @@ export default function PageClient({ data }: { data: PageData }) {
       <footer className="border-t border-slate-200 bg-slate-50 px-6 py-8 text-center text-xs text-slate-400">
         © 2026 {profile.name} · {profile.title} · Paris
       </footer>
+
+      <AnimatePresence>
+        {activeProject && <ProjectModal project={activeProject} onClose={() => setActiveProject(null)} />}
+      </AnimatePresence>
     </main>
   );
 }

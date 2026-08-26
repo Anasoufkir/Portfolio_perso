@@ -5,7 +5,9 @@ node_modules/
 *.log
 .DS_Store
 data/
+!app/api/admin/data/
 public/photo.jpg
 public/Anas_Oufkir_CV.pdf
+public/uploads/
 lib/
 setup-git.sh
