@@ -9,7 +9,10 @@ interface Profile {
   linkedin: string; github: string; website: string; location: string; available: boolean;
 }
 interface Exp { id: string; period: string; type: string; title: string; company: string; location: string; badge: string; points: string[]; techs: string[] }
-interface Proj { id: string; title: string; category: string; description: string; stack: string[] }
+interface Proj {
+  id: string; title: string; category: string; description: string; stack: string[];
+  slug?: string; long_description?: string; repo_url?: string; demo_url?: string; images?: string[];
+}
 interface Skill { id: string; category: string; items: string[] }
 interface Cert { id: string; name: string; issuer: string }
 
@@ -65,7 +68,7 @@ export default function Dashboard() {
       .then(d => {
         if (d.hero) setProfile({ ...emptyProfile, ...d.hero });
         if (d.experiences) setExperiences(d.experiences.map((e: Exp) => ({ ...e, id: String(e.id), points: e.points||[], techs: e.techs||[] })));
-        if (d.projects) setProjects(d.projects.map((p: Proj) => ({ ...p, id: String(p.id), stack: p.stack||[] })));
+        if (d.projects) setProjects(d.projects.map((p: Proj) => ({ ...p, id: String(p.id), stack: p.stack||[], images: p.images||[] })));
         if (d.skills) setSkills(d.skills.map((s: Skill) => ({ ...s, id: String(s.id), items: s.items||[] })));
         if (d.certifications) setCertifications(d.certifications.map((c: Cert) => ({ ...c, id: String(c.id) })));
       })
@@ -88,6 +91,20 @@ export default function Dashboard() {
   };
 
   const logout = async () => { await fetch('/api/admin/logout', { method: 'POST' }); router.push('/admin'); };
+
+  const uploadImage = async (projectId: string, file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setProjects(ps => ps.map(pr => pr.id === projectId ? { ...pr, images: [...(pr.images||[]), data.url] } : pr));
+      } else {
+        alert(data.error || "Erreur lors de l'upload");
+      }
+    } catch { alert('Erreur réseau lors de l\'upload'); }
+  };
 
   const tabs = [
     { id:'hero', label:'Profil', icon:<User size={15}/> },
@@ -233,11 +250,44 @@ export default function Dashboard() {
                   <Inp label="Catégorie" value={p.category} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,category:v}:pr))} placeholder="IA · Recrutement" />
                 </div>
                 <div className="mb-4">
-                  <Txt label="Description" value={p.description} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,description:v}:pr))} />
+                  <Txt label="Description courte (carte projet)" value={p.description} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,description:v}:pr))} />
                 </div>
                 <Inp label="Stack technique (séparée par des virgules)" value={p.stack.join(', ')}
                   onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,stack:v.split(',').map(t=>t.trim()).filter(Boolean)}:pr))}
                   placeholder="React, Node.js, MongoDB" />
+
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  <Inp label="Lien repo GitHub" value={p.repo_url||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,repo_url:v}:pr))} placeholder="https://github.com/..." />
+                  <Inp label="Lien démo live (optionnel)" value={p.demo_url||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,demo_url:v}:pr))} placeholder="https://..." />
+                </div>
+                <div className="mt-4">
+                  <Inp label="Slug URL (optionnel — sinon généré depuis le titre)" value={p.slug||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,slug:v}:pr))} placeholder="monitoring-prometheus-grafana" />
+                </div>
+                <div className="mt-4">
+                  <Txt label="Description détaillée (page démo du projet)" value={p.long_description||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,long_description:v}:pr))} rows={6} />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Captures d&apos;écran</label>
+                  {(p.images?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-3 mb-3">
+                      {(p.images||[]).map((img,ii) => (
+                        <div key={img+ii} className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={img} alt="" className="h-20 w-32 rounded-lg border border-slate-200 object-cover" />
+                          <button onClick={()=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,images:(pr.images||[]).filter((_,idx)=>idx!==ii)}:pr))}
+                            className="absolute -top-2 -right-2 rounded-full bg-red-500 p-1 text-white shadow hover:bg-red-600 transition">
+                            <Trash2 size={11}/>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <input type="file" accept="image/png,image/jpeg,image/webp,image/gif"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadImage(p.id, f); e.target.value=''; }}
+                    className="text-xs text-slate-500 file:mr-3 file:rounded-lg file:border file:border-slate-200 file:bg-slate-50 file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-slate-600" />
+                </div>
+
                 <div className="mt-4 flex justify-end">
                   <button onClick={()=>setProjects(ps=>ps.filter(pr=>pr.id!==p.id))}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-100 transition">
@@ -246,7 +296,7 @@ export default function Dashboard() {
                 </div>
               </Card>
             ))}
-            <button onClick={()=>setProjects(ps=>[...ps,{id:Date.now().toString(),title:'',category:'',description:'',stack:[]}])}
+            <button onClick={()=>setProjects(ps=>[...ps,{id:Date.now().toString(),title:'',category:'',description:'',stack:[],slug:'',long_description:'',repo_url:'',demo_url:'',images:[]}])}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 shadow-sm transition">
               <Plus size={16}/> Ajouter un projet
             </button>

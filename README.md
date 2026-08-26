@@ -75,11 +75,24 @@ Six tables conçues pour couvrir l'ensemble du contenu du portfolio :
 ```sql
 portfolio_profile  -- Profil principal (nom, titre, bio, contact, disponibilité)
 experiences        -- Expériences professionnelles avec points clés et technologies
-projects           -- Projets avec description et stack technique
+projects           -- Projets : carte (titre, catégorie, description, stack) + démo
+                    --   (slug, description longue, repo_url, demo_url, images[])
 skills             -- Compétences regroupées par catégorie
 certifications     -- Certifications professionnelles
 admin_users        -- Utilisateurs admin avec mot de passe hashé (bcrypt)
 ```
+
+Les colonnes de démo (`slug`, `long_description`, `repo_url`, `demo_url`, `images`) sont ajoutées via `migrations/002_add_project_demo_fields.sql` — voir [Installation locale](#installation-locale).
+
+---
+
+## Démos de projets
+
+Chaque projet affiché sur `/` peut avoir une fiche de démo :
+
+- **Aperçu rapide** — un clic sur une carte projet ouvre une modale (description, stack, lien repo GitHub, lien démo live si disponible).
+- **Page dédiée** — `/projets/[slug]` présente le projet en détail : description longue, captures d'écran, stack complète, liens repo/démo. Le `slug` est généré automatiquement depuis le titre (éditable dans l'admin).
+- **Captures d'écran** — uploadées depuis le panel admin, stockées sur le VPS dans `public/uploads/projects/` (non versionné) et servies statiquement par Next.js.
 
 ---
 
@@ -129,6 +142,9 @@ cp .env.example .env.local
 # Initialiser la base de données
 psql -d votre_base -f reset-db.sql
 
+# Ajouter les champs de démo aux projets (idempotent)
+psql -d votre_base -f migrations/002_add_project_demo_fields.sql
+
 # Lancer en développement
 npm run dev
 ```
@@ -161,6 +177,9 @@ portfolio/
 │   ├── page-client.tsx              # Client Component — UI portfolio
 │   ├── layout.tsx                   # Layout + métadonnées SEO
 │   ├── globals.css                  # Tailwind v4
+│   ├── projets/
+│   │   └── [slug]/
+│   │       └── page.tsx             # Page démo dédiée par projet
 │   ├── admin/
 │   │   ├── page.tsx                 # Page login
 │   │   └── dashboard/
@@ -169,10 +188,14 @@ portfolio/
 │       └── admin/
 │           ├── login/route.ts       # Authentification
 │           ├── logout/route.ts      # Déconnexion
-│           └── data/route.ts        # CRUD données portfolio
+│           ├── data/route.ts        # CRUD données portfolio
+│           └── upload/route.ts      # Upload des captures d'écran projet
 ├── public/
 │   ├── photo.jpg                    # Photo de profil
-│   └── Anas_Oufkir_CV.pdf          # CV téléchargeable
+│   ├── Anas_Oufkir_CV.pdf          # CV téléchargeable
+│   └── uploads/projects/            # Captures d'écran uploadées (non versionné)
+├── migrations/
+│   └── 002_add_project_demo_fields.sql  # Champs démo de la table projects
 ├── proxy.ts                         # Middleware protection routes admin
 ├── .env.example                     # Template variables d'environnement
 ├── .env.local                       # Variables locales (ignoré par git)
