@@ -77,7 +77,7 @@ export default async function ProjectPage({
                 <GitBranch size={15} /> Voir le repo
               </a>
             )}
-            {project.demo_url && (
+            {project.demo_url && !project.demo_url.includes('github.com') && (
               <a
                 href={project.demo_url}
                 target="_blank"

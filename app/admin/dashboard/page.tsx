@@ -258,7 +258,7 @@ export default function Dashboard() {
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <Inp label="Lien repo GitHub" value={p.repo_url||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,repo_url:v}:pr))} placeholder="https://github.com/..." />
-                  <Inp label="Lien démo live (optionnel)" value={p.demo_url||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,demo_url:v}:pr))} placeholder="https://..." />
+                  <Inp label="URL de démo live (optionnel — PAS le lien GitHub)" value={p.demo_url||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,demo_url:v}:pr))} placeholder="https://mon-app.exemple.com — laisser vide si pas de démo" />
                 </div>
                 <div className="mt-4">
                   <Inp label="Slug URL (optionnel — sinon généré depuis le titre)" value={p.slug||''} onChange={v=>setProjects(ps=>ps.map(pr=>pr.id===p.id?{...pr,slug:v}:pr))} placeholder="monitoring-prometheus-grafana" />

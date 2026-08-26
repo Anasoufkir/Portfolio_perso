@@ -121,6 +121,12 @@ function ContactForm({ email }: { email: string }) {
   );
 }
 
+// Garde-fou : si "démo live" a été rempli par erreur avec un lien GitHub,
+// on ne l'affiche jamais comme un bouton "Voir la démo".
+function isRealDemoUrl(url?: string) {
+  return !!url && !url.includes('github.com');
+}
+
 function ProjectModal({ project, onClose }: { project: Project; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -151,7 +157,7 @@ function ProjectModal({ project, onClose }: { project: Project; onClose: () => v
               <GitBranch size={14} /> Voir le repo
             </a>
           )}
-          {project.demo_url && (
+          {isRealDemoUrl(project.demo_url) && (
             <a href={project.demo_url} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">
               <Globe size={14} /> Voir la démo
